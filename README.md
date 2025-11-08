@@ -1,4 +1,8 @@
 # To run:
 ```bash
-deno run --allow-net --allow-read --allow-env --allow-sys main.ts
+denot task dev
+```
+or
+```bash
+deno run --watch --allow-net --allow-read --allow-env --allow-sys main.ts
 ```
