@@ -1,3 +1,7 @@
+# Setup env:
+1. Copy `.env.example` to `.env`
+2. Change <username> and <password>
+
 # To run:
 ```bash
 denot task dev
