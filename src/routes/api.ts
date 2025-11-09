@@ -93,6 +93,7 @@ router.post('/users', (req, res) => {
 })
 
 router.post('/car-upload', upload.single('image'), async (req, res) => {
+  console.log('Received file upload request')
     try {
         // Check if file was uploaded
         if (!req.file) {
@@ -101,75 +102,6 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
                 message: 'No image file uploaded',
             })
         }
-
-        // File information
-        const fileInfo = {
-            filename: req.file.filename,
-            originalName: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            path: req.file.path,
-        }
-
-        console.log('File uploaded:', fileInfo)
-
-
-        const response = await openai.chat.completions.create({
-            model: 'gpt-4-vision-preview',
-            messages: [
-                {
-                    role: 'user',
-                    content: [
-                        {
-                            type: 'text',
-                            text: "Describe the car in the image based on the keywords of this schema: [\"Sedan\", \"SUV\", \"Truck\", \"Mini-van\"], [\"Daily commuting\", \"Off-road\", \"Work\", \"Leisure\"], [\"Smooth & comfortable\", \"Sporty & responsive\", \"Off-road capable\"], [\"Gasoline\", \"Hybrid\", \"Electric\"], [\"AWD\", \"RWD\", \"FWD\"], [\"Base\", \"Sport\", \"EX\", \"Luxury\"]. Pick a key word for each array that best describes the car and separate it by commas.",
-                        },
-                        {
-                            type: 'image_url',
-                            image_url: {
-                                url: `data:${fileInfo.mimetype};base64,${fs.readFileSync(fileInfo.path, 'base64')}`,
-                                detail: 'high'
-                            }
-                        },
-                    ],
-                },
-            ],
-        })
-
-        // Delete the file after processing
-        fs.unlink(fileInfo.path, (err) => {
-            if (err) {
-                console.error('Error deleting uploaded file:', err)
-            }
-        })
-
-        return res.json({
-            success: true,
-            message: 'Car image uploaded successfully',
-            file: {
-                filename: fileInfo.filename,
-                originalName: fileInfo.originalName,
-                size: fileInfo.size,
-                mimetype: fileInfo.mimetype,
-            },
-            modelResponse: response.choices[0]?.message?.content || 'No response',
-        })
-    } catch (error) {
-        console.error('Error uploading file:', error)
-        // Deleting the uploaded file in case of error
-        if (req.file) {
-            fs.unlink(req.file.path, (err) => {
-                if (err) {
-                    console.error('Error deleting uploaded file:', err)
-                }
-            })
-        }
-        return res.status(500).json({
-            success: false,
-            message: 'Error uploading file',
-            error: error instanceof Error ? error.message : 'Unknown error',
-        })
-    }
 
     // File information
     const fileInfo = {
@@ -197,7 +129,7 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
           content: [
             {
               type: 'text',
-              text: 'Describe the car in the image based on the keywords of this schema: ["Sedan", "SUV", "Truck", "Mini-van"], ["Daily commuting", "Off-road", "Work", "Leisure"], ["Smooth & comfortable", "Sporty & responsive", "Off-road capable"], ["Gasoline", "Hybrid", "Electric"], ["AWD", "RWD", "FWD"], ["Base", "Sport", "EX", "Luxury"]. Pick a key word for each array that best describes the car and separate it by commas.',
+              text: 'Describe the car in the image based on the keywords of this schema: ["Sedan", "SUV", "Truck", "Mini-van"], ["Daily commuting", "Off-road", "Work", "Leisure"], ["Smooth & comfortable", "Sporty & responsive", "Off-road capable"], ["Gasoline", "Hybrid", "Electric"], ["2", "4", "5", 7+"]. Pick a key word for each array that best describes the car and separate it by commas.',
             },
             {
               type: 'image_url',
@@ -213,6 +145,15 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
         },
       ],
     })
+    console.log('OpenAI response:', response)
+
+    var carInfo = response.choices[0]?.message?.content?.split(",") || ["","","","",""]
+    console.log('AI response car info:', carInfo)
+    var seats = carInfo[4] ? parseInt(carInfo[4].trim()) : 0;
+    var bodyStyle = carInfo[0] ? carInfo[0] : '';
+    var usage = carInfo[1] ? carInfo[1] : '';
+    var drivingExperience = carInfo[2] ? carInfo[2] : '';
+    var engineType = carInfo[3] ? carInfo[3] : '';
 
     // Delete the file after processing
     fs.unlink(fileInfo.path, (err) => {
@@ -220,17 +161,92 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
         console.error('Error deleting uploaded file:', err)
       }
     })
+    const searchQuery = {
+      $search: {
+        index: 'default',
+        compound: {
+          must: [
+            ...(seats > 0
+              ? [
+                  {
+                    range: {
+                      path: 'seats',
+                      gte: seats,
+                    },
+                  },
+                ]
+              : []),
+          ],
+          should: [
+            ...(bodyStyle ? [{
+              text: {
+                query: bodyStyle,
+                path: "bodyStyle",
+                score: { boost: { value: 2.0 } }
+              }
+            }] : []),
+            ...(usage.length > 0 ? [{
+              text: {
+                query: usage,
+                path: "usage",
+                score: { boost: { value: 0.8 } }
+              }
+            }] : []),
+            ...(drivingExperience.length > 0 ? [{
+              text: {
+                query: drivingExperience,
+                path: "drivingExperience",
+                score: { boost: { value: 0.8 } }
+              }
+            }] : []),
+            ...(engineType.length > 0 ? [{
+              text: {
+                query: engineType,
+                path: "engineType",
+                score: { boost: { value: 1.5 } }
+              }
+            }] 
+            : []),
+          ]
+        }
+      }
+    };
+
+    // Execute the search query
+    const matchedCars = await Car.aggregate([
+      searchQuery,
+      {
+        $addFields: {
+          searchScore: { $meta: 'searchScore' },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          bodyStyle: 1,
+          usage: 1,
+          drivingExperience: 1,
+          engineType: 1,
+          seats: 1,
+          driveType: 1,
+          priority: 1,
+          price: 1,
+          description: 1,
+          searchScore: 1,
+        },
+      },
+      {
+        $sort: { searchScore: -1 }, // sort by best match
+      },
+      {
+        $limit: 1,
+      }
+    ])
 
     return res.json({
       success: true,
-      message: 'Car image uploaded successfully',
-      file: {
-        filename: fileInfo.filename,
-        originalName: fileInfo.originalName,
-        size: fileInfo.size,
-        mimetype: fileInfo.mimetype,
-      },
-      modelResponse: response.choices[0]?.message?.content || 'No response',
+      matches: matchedCars,
     })
   } catch (error) {
     console.error('Error uploading file:', error)
