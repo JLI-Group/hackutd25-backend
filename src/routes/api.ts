@@ -824,7 +824,7 @@ Please analyze the document and verify if the information matches:
 - Monthly Income: ${monthlyIncome}
 - FICO/Credit Score: ${ficoScore}
 ${ssn ? `- SSN (last 4 digits): ${ssn}` : ''}
-${carPrice ? `- Car Price/Loan Amount: ${carPrice}` : ''} (it doesn't have to match exactly but within 20% range)
+${carPrice ? `- Car Price/Loan Amount: ${carPrice}` : ''} (it doesn't have to match exactly but within 25% range)
 
 Please respond with a JSON object containing:
 {
@@ -836,7 +836,7 @@ Please respond with a JSON object containing:
   "summary": string (brief explanation of verification result)
 }
 
-Focus on finding exact or approximate matches for the provided values. Be strict but reasonable with verification. A match in any of the fields increases confidence, but a match in SSN increases confidence significantly. If no fields match, verified should be false with low confidence.
+Focus on finding exact or approximate matches for the provided values. Be strict but reasonable with verification especially in monthly income. A match in any of the fields increases confidence, but a match in SSN increases confidence significantly. If no fields match, verified should be false with low confidence.
 `
 
       const file = await openai.files.create({
