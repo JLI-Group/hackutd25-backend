@@ -122,14 +122,14 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
     // - Process with AI/ML models
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Describe the car in the image based on the keywords of this schema: ["Sedan", "SUV", "Truck", "Mini-van"], ["Daily commuting", "Off-road", "Work", "Leisure"], ["Smooth & comfortable", "Sporty & responsive", "Off-road capable"], ["Gasoline", "Hybrid", "Electric"], ["2", "4", "5", 7+"]. Pick a key word for each array that best describes the car and separate it by commas.',
+              text: 'Describe the car in the image based on the keywords of this schema: ["Sedan", "SUV", "Truck", "Mini-van"], ["Daily commuting", "Off-road", "Work", "Leisure"], ["Smooth & comfortable", "Sporty & responsive", "Off-road capable"], ["Gasoline", "Hybrid", "Electric"], ["2", "4", "5", "7+"]. Pick a key word for each array that best describes the car and separate it by commas.',
             },
             {
               type: 'image_url',
@@ -147,13 +147,38 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
     })
     console.log('OpenAI response:', response)
 
-    var carInfo = response.choices[0]?.message?.content?.split(",") || ["","","","",""]
+    const aiContent = response.choices[0]?.message?.content;
+    if (!aiContent) {
+      console.error('No content in OpenAI response');
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to analyze image - no AI response content',
+        aiResponse: response
+      });
+    }
+
+    var carInfo = aiContent.split(",") || ["","","","",""]
     console.log('AI response car info:', carInfo)
-    var seats = carInfo[4] ? parseInt(carInfo[4].trim()) : 0;
-    var bodyStyle = carInfo[0] ? carInfo[0] : '';
-    var usage = carInfo[1] ? carInfo[1] : '';
-    var drivingExperience = carInfo[2] ? carInfo[2] : '';
-    var engineType = carInfo[3] ? carInfo[3] : '';
+    
+    // Validate AI response
+    if (!carInfo || carInfo.length < 5) {
+      console.error('Invalid AI response format:', aiContent)
+      return res.status(500).json({
+        success: false,
+        message: 'Invalid AI response format - expected 5 comma-separated values',
+        aiResponse: aiContent
+      })
+    }
+    
+    var seats = carInfo[4] ? parseInt(carInfo[4].trim().replace('+', '')) : 0;
+    var bodyStyle = carInfo[0] ? carInfo[0].trim() : '';
+    var usage = carInfo[1] ? carInfo[1].trim() : '';
+    var drivingExperience = carInfo[2] ? carInfo[2].trim() : '';
+    var engineType = carInfo[3] ? carInfo[3].trim() : '';
+
+    console.log('Parsed car data:', { bodyStyle, usage, drivingExperience, engineType, seats });
+
+    console.log('Parsed car data:', { bodyStyle, usage, drivingExperience, engineType, seats });
 
     // Delete the file after processing
     fs.unlink(fileInfo.path, (err) => {
@@ -161,6 +186,7 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
         console.error('Error deleting uploaded file:', err)
       }
     })
+    
     const searchQuery = {
       $search: {
         index: 'default',
@@ -212,6 +238,8 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
       }
     };
 
+    console.log('Search query:', JSON.stringify(searchQuery, null, 2));
+
     // Execute the search query
     const matchedCars = await Car.aggregate([
       searchQuery,
@@ -243,6 +271,8 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
         $limit: 1,
       }
     ])
+
+    console.log('Matched cars:', matchedCars);
 
     return res.json({
       success: true,
@@ -452,7 +482,7 @@ router.post('/cars/match', async (req, res) => {
                     text: {
                       query: usage,
                       path: 'usage',
-                      score: { boost: { value: 0.8 } },
+                      score: { boost: { value: 1.5 } },
                     },
                   },
                 ]
@@ -531,7 +561,7 @@ router.post('/cars/match', async (req, res) => {
         },
       },
       {
-        $sort: { searchScore: -1 }, // sort by best match
+        $sort: {  searchScore: -1, price: -1 }, // sort by best match
       },
     ])
 
