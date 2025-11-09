@@ -190,7 +190,7 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
     // - Process with AI/ML models
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4-vision-preview',
+      model: 'gpt-4.1-mini',
       messages: [
         {
           role: 'user',
