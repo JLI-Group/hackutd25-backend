@@ -10,6 +10,7 @@
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
     "seed": "node --loader ts-node/esm src/db/seed.ts",
+    "seed-rates": "node --loader ts-node/esm src/db/rates-seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

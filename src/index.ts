@@ -41,19 +41,6 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api', apiRoutes)
 
-// Connect to MongoDB and start server
-connectDB().then(() => {
-  app.listen(config.server.port, () => {
-    console.log(
-      `Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`
-    )
-    console.log(
-      `Environment variables loaded: ${
-        Object.keys(process.env).filter((key) => !key.startsWith('npm_')).length
-      } variables`
-    )
-  })
-})
 // Error handling middleware for multer
 app.use(
   (
@@ -95,5 +82,22 @@ app.use(
     })
   }
 )
+
+// Connect to MongoDB and start server
+connectDB().then(() => {
+  app.listen(config.server.port, () => {
+    console.log(
+      `Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`
+    )
+    console.log(
+      `Environment variables loaded: ${
+        Object.keys(process.env).filter((key) => !key.startsWith('npm_')).length
+      } variables`
+    )
+  })
+}).catch((error) => {
+  console.error('Failed to connect to database:', error)
+  process.exit(1)
+})
 
 export default app
