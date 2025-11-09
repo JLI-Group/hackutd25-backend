@@ -5,8 +5,17 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 import config from '../config/index.js'
 import { OpenAI } from 'openai'
+import { createRequire } from 'module'
 import Car from '../models/car.js'
 import apr from '../models/apr.js'
+
+// const require = createRequire(import.meta.url)
+
+// Use require for pdf-parse as it has CommonJS structure
+// async function parsePdf(buffer: Buffer) {
+//   const pdfParse = require('pdf-parse')
+//   return await pdfParse(buffer)
+// }
 
 interface ICar {
   name: string
@@ -72,6 +81,28 @@ const upload = multer({
   fileFilter: fileFilter,
 })
 
+// PDF file filter for document verification
+const pdfFileFilter = (
+  req: express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (file.mimetype === 'application/pdf') {
+    cb(null, true)
+  } else {
+    cb(new Error('Invalid file type. Only PDF documents are allowed.'))
+  }
+}
+
+// Configure multer for PDF uploads
+const uploadPdf = multer({
+  storage: storage,
+  limits: {
+    fileSize: 20 * 1024 * 1024, // 20MB limit for PDFs
+  },
+  fileFilter: pdfFileFilter,
+})
+
 const router = express.Router()
 
 // Example API routes
@@ -94,14 +125,14 @@ router.post('/users', (req, res) => {
 
 router.post('/car-upload', upload.single('image'), async (req, res) => {
   console.log('Received file upload request')
-    try {
-        // Check if file was uploaded
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                message: 'No image file uploaded',
-            })
-        }
+  try {
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file uploaded',
+      })
+    }
 
     // File information
     const fileInfo = {
@@ -147,38 +178,51 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
     })
     console.log('OpenAI response:', response)
 
-    const aiContent = response.choices[0]?.message?.content;
+    const aiContent = response.choices[0]?.message?.content
     if (!aiContent) {
-      console.error('No content in OpenAI response');
+      console.error('No content in OpenAI response')
       return res.status(500).json({
         success: false,
         message: 'Failed to analyze image - no AI response content',
-        aiResponse: response
-      });
+        aiResponse: response,
+      })
     }
 
-    var carInfo = aiContent.split(",") || ["","","","",""]
+    var carInfo = aiContent.split(',') || ['', '', '', '', '']
     console.log('AI response car info:', carInfo)
-    
+
     // Validate AI response
     if (!carInfo || carInfo.length < 5) {
       console.error('Invalid AI response format:', aiContent)
       return res.status(500).json({
         success: false,
-        message: 'Invalid AI response format - expected 5 comma-separated values',
-        aiResponse: aiContent
+        message:
+          'Invalid AI response format - expected 5 comma-separated values',
+        aiResponse: aiContent,
       })
     }
-    
-    var seats = carInfo[4] ? parseInt(carInfo[4].trim().replace('+', '')) : 0;
-    var bodyStyle = carInfo[0] ? carInfo[0].trim() : '';
-    var usage = carInfo[1] ? carInfo[1].trim() : '';
-    var drivingExperience = carInfo[2] ? carInfo[2].trim() : '';
-    var engineType = carInfo[3] ? carInfo[3].trim() : '';
 
-    console.log('Parsed car data:', { bodyStyle, usage, drivingExperience, engineType, seats });
+    var seats = carInfo[4] ? parseInt(carInfo[4].trim().replace('+', '')) : 0
+    var bodyStyle = carInfo[0] ? carInfo[0].trim() : ''
+    var usage = carInfo[1] ? carInfo[1].trim() : ''
+    var drivingExperience = carInfo[2] ? carInfo[2].trim() : ''
+    var engineType = carInfo[3] ? carInfo[3].trim() : ''
 
-    console.log('Parsed car data:', { bodyStyle, usage, drivingExperience, engineType, seats });
+    console.log('Parsed car data:', {
+      bodyStyle,
+      usage,
+      drivingExperience,
+      engineType,
+      seats,
+    })
+
+    console.log('Parsed car data:', {
+      bodyStyle,
+      usage,
+      drivingExperience,
+      engineType,
+      seats,
+    })
 
     // Delete the file after processing
     fs.unlink(fileInfo.path, (err) => {
@@ -186,7 +230,7 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
         console.error('Error deleting uploaded file:', err)
       }
     })
-    
+
     const searchQuery = {
       $search: {
         index: 'default',
@@ -204,41 +248,56 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
               : []),
           ],
           should: [
-            ...(bodyStyle ? [{
-              text: {
-                query: bodyStyle,
-                path: "bodyStyle",
-                score: { boost: { value: 2.0 } }
-              }
-            }] : []),
-            ...(usage.length > 0 ? [{
-              text: {
-                query: usage,
-                path: "usage",
-                score: { boost: { value: 0.8 } }
-              }
-            }] : []),
-            ...(drivingExperience.length > 0 ? [{
-              text: {
-                query: drivingExperience,
-                path: "drivingExperience",
-                score: { boost: { value: 0.8 } }
-              }
-            }] : []),
-            ...(engineType.length > 0 ? [{
-              text: {
-                query: engineType,
-                path: "engineType",
-                score: { boost: { value: 1.5 } }
-              }
-            }] 
-            : []),
-          ]
-        }
-      }
-    };
+            ...(bodyStyle
+              ? [
+                  {
+                    text: {
+                      query: bodyStyle,
+                      path: 'bodyStyle',
+                      score: { boost: { value: 2.0 } },
+                    },
+                  },
+                ]
+              : []),
+            ...(usage.length > 0
+              ? [
+                  {
+                    text: {
+                      query: usage,
+                      path: 'usage',
+                      score: { boost: { value: 0.8 } },
+                    },
+                  },
+                ]
+              : []),
+            ...(drivingExperience.length > 0
+              ? [
+                  {
+                    text: {
+                      query: drivingExperience,
+                      path: 'drivingExperience',
+                      score: { boost: { value: 0.8 } },
+                    },
+                  },
+                ]
+              : []),
+            ...(engineType.length > 0
+              ? [
+                  {
+                    text: {
+                      query: engineType,
+                      path: 'engineType',
+                      score: { boost: { value: 1.5 } },
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      },
+    }
 
-    console.log('Search query:', JSON.stringify(searchQuery, null, 2));
+    console.log('Search query:', JSON.stringify(searchQuery, null, 2))
 
     // Execute the search query
     const matchedCars = await Car.aggregate([
@@ -269,10 +328,10 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
       },
       {
         $limit: 1,
-      }
+      },
     ])
 
-    console.log('Matched cars:', matchedCars);
+    console.log('Matched cars:', matchedCars)
 
     return res.json({
       success: true,
@@ -561,7 +620,7 @@ router.post('/cars/match', async (req, res) => {
         },
       },
       {
-        $sort: {  searchScore: -1, price: -1 }, // sort by best match
+        $sort: { searchScore: -1, price: -1 }, // sort by best match
       },
     ])
 
@@ -699,5 +758,163 @@ router.post('/lease-details', async (req, res) => {
     },
   })
 })
+
+/**
+ * Endpoint to verify document uploads against user finance information
+ * Given: PDF document + user finance info (ficoScore, monthlyIncome, carPrice)
+ * Returns: Verification result indicating if the document matches the provided information
+ */
+router.post(
+  '/verify-documents',
+  uploadPdf.single('document'),
+  async (req, res) => {
+    console.log('Received document verification request')
+
+    try {
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'No document file provided',
+        })
+      }
+
+      // Parse the user finance information from request body
+      const { ficoScore, monthlyIncome, carPrice, ssn } = req.body
+
+      if (!ficoScore || !monthlyIncome) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Missing required finance information (ficoScore, monthlyIncome)',
+        })
+      }
+
+      // File information
+      const fileInfo = {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+      }
+
+      console.log('Document uploaded:', fileInfo)
+      console.log('User finance info:', {
+        ficoScore,
+        monthlyIncome,
+        carPrice,
+        ssn,
+      })
+
+      // Extract text from PDF
+      // const pdfBuffer = fs.readFileSync(fileInfo.path)
+      // const pdfData = await parsePdf(pdfBuffer)
+      // const documentText = pdfData.text
+
+      // console.log('Extracted PDF text (first 500 chars):', documentText.substring(0, 500))
+
+      // Use GPT-4o to verify the document against user finance information
+      const verificationPrompt = `
+You are a document verification specialist. I will provide you with:
+1. Text extracted from a financial document (PDF)
+2. User-provided finance information
+
+Please analyze the document and verify if the information matches:
+- Monthly Income: ${monthlyIncome}
+- FICO/Credit Score: ${ficoScore}
+${ssn ? `- SSN (last 4 digits): ${ssn}` : ''}
+${carPrice ? `- Car Price/Loan Amount: ${carPrice}` : ''} (it doesn't have to match exactly but within 20% range)
+
+Please respond with a JSON object containing:
+{
+  "verified": boolean,
+  "confidence": number (0-100),
+  "matchingFields": array of strings (which fields matched),
+  "discrepancies": array of strings (any discrepancies found),
+  "documentType": string (what type of document this appears to be),
+  "summary": string (brief explanation of verification result)
+}
+
+Focus on finding exact or approximate matches for the provided values. Be strict but reasonable with verification. A match in any of the fields increases confidence, but a match in SSN increases confidence significantly. If no fields match, verified should be false with low confidence.
+`
+
+      const file = await openai.files.create({
+        file: fs.createReadStream(fileInfo.path),
+        purpose: 'user_data',
+      })
+
+      const aiResponse = await openai.responses.create({
+        model: 'gpt-5',
+        input: [
+          {
+            role: 'user',
+            content: [
+              { type: 'input_text', text: verificationPrompt },
+              {
+                type: 'input_file',
+                file_id: file.id
+              },
+            ],
+          },
+        ],
+      })
+
+      console.log('AI verification response:', aiResponse)
+
+      const verificationResult = aiResponse.output_text
+      if (!verificationResult) {
+        throw new Error('No verification result from AI')
+      }
+
+      let parsedResult
+      try {
+        parsedResult = JSON.parse(verificationResult)
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', verificationResult)
+        throw new Error('Invalid AI response format')
+      }
+
+      console.log('Document verification result:', parsedResult)
+
+      // Delete the uploaded file after processing for security
+      fs.unlink(fileInfo.path, (err) => {
+        if (err) {
+          console.error('Error deleting uploaded file:', err)
+        } else {
+          console.log('Uploaded file deleted successfully')
+        }
+      })
+
+      return res.json({
+        success: true,
+        message: 'Document verification completed',
+        data: {
+          verification: parsedResult,
+          fileInfo: {
+            originalName: fileInfo.originalName,
+            size: fileInfo.size,
+            uploadedAt: new Date().toISOString(),
+          },
+        },
+      })
+    } catch (error) {
+      console.error('Error verifying document:', error)
+
+      // Clean up uploaded file in case of error
+      if (req.file) {
+        fs.unlink(req.file.path, (err) => {
+          if (err) console.error('Error deleting file after error:', err)
+        })
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: 'Error verifying document',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }
+)
 
 export default router
