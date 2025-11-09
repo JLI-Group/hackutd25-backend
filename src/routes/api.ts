@@ -117,20 +117,20 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
         const response = await openai.responses.create({
             model: 'gpt-4.1-mini',
             input: [
+            {
+                role: 'user',
+                content: [
                 {
-                    role: 'user',
-                    content: [
-                        {
-                            type: 'input_text',
-                            text: 'Describe the car in the image. I need the body style (e.g.Sedan, SUV, Truck, Mini-van), car use (e.g. Daily commuting, Off-road, Work, Leisure), and color.',
-                        },
-                        {
-                            type: 'input_image',
-                            file_id: fileId,
-                            detail: 'high',
-                        },
-                    ],
+                    type: 'input_text',
+                    text: "Describe the car in the image based on the keywords of this schema: [\"Sedan\", \"SUV\", \"Truck\", \"Mini-van\"], [\"Daily commuting\", \"Off-road\", \"Work\", \"Leisure\"], [\"Smooth & comfortable\", \"Sporty & responsive\", \"Off-road capable\"], [\"Gasoline\", \"Hybrid\", \"Electric\"], [\"AWD\", \"RWD\", \"FWD\"], [\"Base\", \"Sport\", \"EX\", \"Luxury\"]. Pick a key word for each array that best describes the car and separate it by commas.",
                 },
+                {
+                    type: 'input_image',
+                    file_id: fileId,
+                    detail: 'high',
+                },
+                ],
+            },
             ],
         })
 
