@@ -5,6 +5,19 @@ import { fileURLToPath } from 'url'
 import fs from 'fs'
 import config from '../config/index.js'
 import { OpenAI } from 'openai'
+import Car from '../models/car.js';
+
+interface ICar {
+  name: string;
+  bodyStyle: string;
+  usage: string[];
+  drivingExperience: string[];
+  engineType: string[];
+  seats: number;
+  driveType: string[];
+  trimLevels: string[];
+  priority: string[];
+}
 
 const openai = new OpenAI()
 
@@ -186,5 +199,118 @@ router.get('/config', (req, res) => {
         },
     })
 })
+
+// Car matching endpoint using MongoDB Atlas Search
+router.post('/cars/match', async (req, res) => {
+  try {
+    const {
+      usage = [],
+      drivingExperience = [],
+      engineType = [],
+      seats = 0,
+      bodyStyle = '',
+      driveType = [],
+      priority = []
+    } = req.body;
+
+    console.log('Search criteria:', { usage, drivingExperience, engineType, seats, bodyStyle, driveType, priority });
+
+    // Build Atlas Search query
+    const searchQuery = {
+      $search: {
+        index: 'default', // Make sure this matches your Atlas Search index name
+        compound: {
+          must: [
+            // Must meet minimum seats requirement if specified
+            ...(seats > 0 ? [{
+              range: {
+                path: "seats",
+                gte: seats
+              }
+            }] : [])
+          ],
+          should: [
+            // Match bodyStyle with exact matching
+            ...(bodyStyle ? [{
+              text: {
+                query: bodyStyle,
+                path: "bodyStyle",
+                score: { boost: { value: 2.0 } }
+              }
+            }] : []),
+            // Match usage with exact matching
+            ...(usage.length > 0 ? [{
+              text: {
+                query: usage,
+                path: "usage",
+                score: { boost: { value: 1.5 } }
+              }
+            }] : []),
+            // Match drivingExperience with exact matching
+            ...(drivingExperience.length > 0 ? [{
+              text: {
+                query: drivingExperience,
+                path: "drivingExperience",
+                score: { boost: { value: 1.5 } }
+              }
+            }] : []),
+            // Match engineType with exact matching
+            ...(engineType.length > 0 ? [{
+              text: {
+                query: engineType,
+                path: "engineType",
+                score: { boost: { value: 2.0 } }
+              }
+            }] : []),
+            // Match driveType with exact matching
+            ...(driveType.length > 0 ? [{
+              text: {
+                query: driveType,
+                path: "driveType",
+                score: { boost: { value: 1.0 } }
+              }
+            }] : []),
+            // Match priority with exact matching
+            ...(priority.length > 0 ? [{
+              text: {
+                query: priority,
+                path: "priority",
+                score: { boost: { value: 1.5 } }
+              }
+            }] : [])
+          ]
+        }
+      }
+    };
+
+    // Execute the search query
+    const matchedCars = await Car.aggregate([
+      searchQuery,
+      {
+        $addFields: {
+          searchScore: { $meta: "searchScore" }
+        }
+      },
+      {
+        $sort: { searchScore: -1 }
+      },
+      {
+        $limit: 5
+      }
+    ]);
+
+    return res.json({
+      success: true,
+      matches: matchedCars
+    });
+
+  } catch (error) {
+    console.error('Atlas Search error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
+  }
+});
 
 export default router

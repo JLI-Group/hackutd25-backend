@@ -1,13 +1,22 @@
 import 'dotenv/config'
 import express from 'express'
 import multer from 'multer'
+import cors from 'cors'
 import config from './config/index.js'
 import apiRoutes from './routes/api.js'
 import { connectDB } from './config/database.js'
 
 const app = express()
 
+// CORS configuration
+const corsOptions = {
+  origin: '*', // In production, replace with your frontend domain
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}
+
 // Middleware
+app.use(cors(corsOptions))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
@@ -86,17 +95,5 @@ app.use(
     })
   }
 )
-
-// Start server
-app.listen(config.server.port, () => {
-  console.log(
-    `Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`
-  )
-  console.log(
-    `Environment variables loaded: ${
-      Object.keys(process.env).filter((key) => !key.startsWith('npm_')).length
-    } variables`
-  )
-})
 
 export default app
