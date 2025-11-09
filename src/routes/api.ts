@@ -313,7 +313,7 @@ router.post('/loan-details', async (req, res) => {
   const aprPremium = [0, 0.0025, 0.003, 0.005, 0.0075]
 
   let lastApr = finalApr
-  const loanOptions = loanTerms.map((n, index) => {
+  let loanOptions = loanTerms.map((n, index) => {
     if (aprPremium[index] == undefined || paymentFees[index] == undefined) {
       throw new Error(
         'Index out of bounds for aprPremium or paymentFees arrays: ' + index
@@ -337,12 +337,20 @@ router.post('/loan-details', async (req, res) => {
   })
 
   // Recommend the best option based on inputs and llm response
+  const prompt = `Given a FICO score of ${ficoScore}, a monthly income of $${monthlyIncome}, and a car price of $${carPrice}, which loan term would you recommend from the following options (only pick 1): ${loanOptions
+    .map(
+      (option) =>
+        `${option.term} months - $${option.monthlyPayment} - ${
+          option.apr * 100
+        }%`
+    )
+    .join(', ')}? Provide only the term in months as a number.`
   const aiResponse = await openai.chat.completions.create({
     model: 'gpt-4.1-mini',
     messages: [
       {
         role: 'user',
-        content: `Given a FICO score of ${ficoScore}, a monthly income of $${monthlyIncome}, and a car price of $${carPrice}, which loan term would you recommend from the following options: ${loanOptions}? Provide only the term in months as a number.`,
+        content: prompt,
       },
     ],
   })
@@ -352,13 +360,18 @@ router.post('/loan-details', async (req, res) => {
   if (recommendMatch && recommendMatch[1]) {
     recommend = parseInt(recommendMatch[1], 10)
   }
+  loanOptions = loanOptions.map((option) => ({
+    ...option,
+    recommended: option.term === recommend,
+  }))
+  console.log(`AI recommended ${recommendText}`)
+
   return res.json({
     success: true,
     message: 'Loan details calculated successfully',
     data: {
       loanOptions: loanOptions,
     },
-    recommended: recommend
   })
 })
 
@@ -617,12 +630,21 @@ router.post('/lease-details', async (req, res) => {
 
   console.log(leaseOptions)
   // Recommend the best option based on inputs and llm response
+  const prompt = `Given a FICO score of ${ficoScore}, a monthly income of $${monthlyIncome}, and a car price of $${carPrice}, which lease term would you recommend from the following options: ${leaseOptions
+    .map(
+      (option) =>
+        `${option.term} months - $${option.monthlyPayment} - ${
+          option.apr * 100
+        }%`
+    )
+    .join(', ')}? Provide only the term in months as a number.`
+  console.log('Lease recommendation prompt:', prompt)
   const aiResponse = await openai.chat.completions.create({
     model: 'gpt-4.1-mini',
     messages: [
       {
         role: 'user',
-        content: `Given a FICO score of ${ficoScore}, a monthly income of $${monthlyIncome}, and a car price of $${carPrice}, which loan term would you recommend from the following options: ${leaseOptions}? Provide only the term in months as a number.`,
+        content: prompt,
       },
     ],
   })
@@ -632,17 +654,19 @@ router.post('/lease-details', async (req, res) => {
   if (recommendMatch && recommendMatch[1]) {
     recommend = parseInt(recommendMatch[1], 10)
   }
-  console.log(`AI recommended ${recommendText}`)
+  console.log(`AI recommended for lease ${recommendText}`)
 
   return res.json({
     success: true,
     message: 'Lease details calculated successfully',
-    data: leaseOptions.map((option) => ({
-      term: option.term,
-      apr: option.apr,
-      monthlyPayment: option.monthlyPayment,
-      recommended: option.term === recommend,
-    })),
+    data: {
+      leaseOptions: leaseOptions.map((option) => ({
+        term: option.term,
+        apr: option.apr,
+        monthlyPayment: option.monthlyPayment,
+        recommended: option.term === recommend,
+      })),
+    },
   })
 })
 
