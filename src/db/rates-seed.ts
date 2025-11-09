@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import apr from '../models/apr';
+import apr from '../models/apr.js';
 
 dotenv.config();
 
