@@ -336,12 +336,29 @@ router.post('/loan-details', async (req, res) => {
     }
   })
 
+  // Recommend the best option based on inputs and llm response
+  const aiResponse = await openai.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [
+      {
+        role: 'user',
+        content: `Given a FICO score of ${ficoScore}, a monthly income of $${monthlyIncome}, and a car price of $${carPrice}, which loan term would you recommend from the following options: ${loanOptions}? Provide only the term in months as a number.`,
+      },
+    ],
+  })
+  const recommendText = aiResponse.choices[0]?.message?.content || ''
+  const recommendMatch = recommendText.match(/(\d{2})/)
+  let recommend = null
+  if (recommendMatch && recommendMatch[1]) {
+    recommend = parseInt(recommendMatch[1], 10)
+  }
   return res.json({
     success: true,
     message: 'Loan details calculated successfully',
     data: {
       loanOptions: loanOptions,
     },
+    recommended: recommend
   })
 })
 
@@ -590,14 +607,42 @@ router.post('/lease-details', async (req, res) => {
     return dep + financeCharges[i]!
   })
 
-  return res.json({
-    success: true,
-    message: 'Lease details calculated successfully',
-    data: termMonths.map((n, i) => ({
+  const leaseOptions = termMonths.map((n, i) => {
+    return {
       term: n,
       apr: parseFloat(adjustedAprs[i]!.toFixed(4)),
       monthlyPayment: parseFloat(monthlyPayments[i]!.toFixed(2)),
-    }))
+    }
+  })
+
+  console.log(leaseOptions)
+  // Recommend the best option based on inputs and llm response
+  const aiResponse = await openai.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [
+      {
+        role: 'user',
+        content: `Given a FICO score of ${ficoScore}, a monthly income of $${monthlyIncome}, and a car price of $${carPrice}, which loan term would you recommend from the following options: ${leaseOptions}? Provide only the term in months as a number.`,
+      },
+    ],
+  })
+  const recommendText = aiResponse.choices[0]?.message?.content || ''
+  const recommendMatch = recommendText.match(/(\d{2})/)
+  let recommend = null
+  if (recommendMatch && recommendMatch[1]) {
+    recommend = parseInt(recommendMatch[1], 10)
+  }
+  console.log(`AI recommended ${recommendText}`)
+
+  return res.json({
+    success: true,
+    message: 'Lease details calculated successfully',
+    data: leaseOptions.map((option) => ({
+      term: option.term,
+      apr: option.apr,
+      monthlyPayment: option.monthlyPayment,
+      recommended: option.term === recommend,
+    })),
   })
 })
 
