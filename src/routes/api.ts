@@ -313,7 +313,7 @@ router.post('/loan-details', async (req, res) => {
   const aprPremium = [0, 0.0025, 0.003, 0.005, 0.0075]
 
   let lastApr = finalApr
-  const loanOptions = loanTerms.map((n, index) => {
+  let loanOptions = loanTerms.map((n, index) => {
     if (aprPremium[index] == undefined || paymentFees[index] == undefined) {
       throw new Error(
         'Index out of bounds for aprPremium or paymentFees arrays: ' + index
@@ -335,6 +335,36 @@ router.post('/loan-details', async (req, res) => {
       apr: parseFloat(currentApr.toFixed(4)),
     }
   })
+
+  // Recommend the best option based on inputs and llm response
+  const prompt = `Given a FICO score of ${ficoScore}, a monthly income of $${monthlyIncome}, and a car price of $${carPrice}, which loan term would you recommend from the following options (only pick 1): ${loanOptions
+    .map(
+      (option) =>
+        `${option.term} months - $${option.monthlyPayment} - ${
+          option.apr * 100
+        }%`
+    )
+    .join(', ')}? Provide only the term in months as a number.`
+  const aiResponse = await openai.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+  })
+  const recommendText = aiResponse.choices[0]?.message?.content || ''
+  const recommendMatch = recommendText.match(/(\d{2})/)
+  let recommend = null
+  if (recommendMatch && recommendMatch[1]) {
+    recommend = parseInt(recommendMatch[1], 10)
+  }
+  loanOptions = loanOptions.map((option) => ({
+    ...option,
+    recommended: option.term === recommend,
+  }))
+  console.log(`AI recommended ${recommendText}`)
 
   return res.json({
     success: true,
@@ -363,7 +393,6 @@ router.get('/config', (req, res) => {
     },
   })
 })
-
 
 // Car matching endpoint using MongoDB Atlas Search
 router.post('/cars/match', async (req, res) => {
@@ -406,52 +435,76 @@ router.post('/cars/match', async (req, res) => {
               : []),
           ],
           should: [
-            ...(bodyStyle ? [{
-              text: {
-                query: bodyStyle,
-                path: "bodyStyle",
-                score: { boost: { value: 2.0 } }
-              }
-            }] : []),
-            ...(usage.length > 0 ? [{
-              text: {
-                query: usage,
-                path: "usage",
-                score: { boost: { value: 0.8 } }
-              }
-            }] : []),
-            ...(drivingExperience.length > 0 ? [{
-              text: {
-                query: drivingExperience,
-                path: "drivingExperience",
-                score: { boost: { value: 0.8 } }
-              }
-            }] : []),
-            ...(engineType.length > 0 ? [{
-              text: {
-                query: engineType,
-                path: "engineType",
-                score: { boost: { value: 1.5 } }
-              }
-            }] : []),
-            ...(driveType.length > 0 ? [{
-              text: {
-                query: driveType,
-                path: "driveType",
-                score: { boost: { value: 0.8 } }
-              }
-            }] : []),
-            ...(priority.length > 0 ? [{
-              text: {
-                query: priority,
-                path: "priority",
-                score: { boost: { value: 1.5 } }
-              }
-            }] : [])
-          ]
-        }
-      }
-    };
+            ...(bodyStyle
+              ? [
+                  {
+                    text: {
+                      query: bodyStyle,
+                      path: 'bodyStyle',
+                      score: { boost: { value: 2.0 } },
+                    },
+                  },
+                ]
+              : []),
+            ...(usage.length > 0
+              ? [
+                  {
+                    text: {
+                      query: usage,
+                      path: 'usage',
+                      score: { boost: { value: 0.8 } },
+                    },
+                  },
+                ]
+              : []),
+            ...(drivingExperience.length > 0
+              ? [
+                  {
+                    text: {
+                      query: drivingExperience,
+                      path: 'drivingExperience',
+                      score: { boost: { value: 0.8 } },
+                    },
+                  },
+                ]
+              : []),
+            ...(engineType.length > 0
+              ? [
+                  {
+                    text: {
+                      query: engineType,
+                      path: 'engineType',
+                      score: { boost: { value: 1.5 } },
+                    },
+                  },
+                ]
+              : []),
+            ...(driveType.length > 0
+              ? [
+                  {
+                    text: {
+                      query: driveType,
+                      path: 'driveType',
+                      score: { boost: { value: 0.8 } },
+                    },
+                  },
+                ]
+              : []),
+            ...(priority.length > 0
+              ? [
+                  {
+                    text: {
+                      query: priority,
+                      path: 'priority',
+                      score: { boost: { value: 1.5 } },
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      },
+    }
 
     // Execute the search query
     const matchedCars = await Car.aggregate([
@@ -493,6 +546,128 @@ router.post('/cars/match', async (req, res) => {
       error: error instanceof Error ? error.message : 'Unknown error occurred',
     })
   }
+})
+
+router.post('/lease-details', async (req, res) => {
+  const { ficoScore, monthlyIncome, carPrice } = req.body
+
+  // Get APR based on FICO score from database
+  let customerTier: string
+  if (ficoScore >= 781) {
+    customerTier = 'SuperPrime'
+  } else if (ficoScore >= 661 && ficoScore <= 780) {
+    customerTier = 'Prime'
+  } else if (ficoScore >= 601 && ficoScore <= 660) {
+    customerTier = 'Non-Prime'
+  } else if (ficoScore >= 501 && ficoScore <= 600) {
+    customerTier = 'SubPrime'
+  } else {
+    customerTier = 'Deep-SubPrime'
+  }
+
+  const baseApr = await apr
+    .findOne({ tier: customerTier })
+    .then((doc) => (doc ? doc.rate : null))
+
+  if (!baseApr) {
+    return res.status(500).json({
+      success: false,
+      message: 'Error retrieving APR from database',
+    })
+  }
+
+  const carPriceCap = carPrice * 0.1 // 10% is arbitrary
+  const monthlyIncomeCap = monthlyIncome * 12 * 0.05 // 5% of annual income (arbitrary)
+  const downPayment = Math.min(carPriceCap, monthlyIncomeCap)
+  const ltv = (carPrice - downPayment) / carPrice
+  const leaseFee = 1000 // Flat lease fee for simplicity
+  const capCost = carPrice - downPayment + leaseFee
+  const termMonths = [24, 36, 48, 60, 72]
+  const aprPremium = [0, 0.0025, 0.003, 0.005, 0.0075]
+
+  // Adjust APR based on LTV
+  let finalApr = baseApr + 0.05 * (ltv - 0.8) // Usually highest/standard is 20% down payment, 0.05 is arbitrary (fees, risk, etc)
+
+  // Adjusted APRs where premium is added on the last term's APR
+  const adjustedAprs: number[] = []
+  let lastApr = finalApr
+  for (let i = 0; i < termMonths.length; i++) {
+    if (aprPremium[i] == undefined) {
+      throw new Error('Index out of bounds for aprPremium array: ' + i)
+    }
+    lastApr += aprPremium[i]!
+    adjustedAprs.push(lastApr)
+  }
+  const moneyFactors = adjustedAprs.map((apr) => (apr / 2400) * 100) // Simplified money factor conversion
+  const residuals = [0.68, 0.61, 0.53, 0.45, 0.38] // Residual value percentages for 24,36,48,60,72 months
+  const residualValues = residuals.map((r) => carPrice * r)
+  const deprecation = residualValues.map((rv, i) => {
+    if (!termMonths[i] || !residualValues[i] || !moneyFactors[i]) {
+      throw new Error('Index out of bounds for termMonths array: ' + i)
+    }
+    return (capCost - rv) / termMonths[i]
+  })
+  const financeCharges = termMonths.map((n, i) => {
+    if (!termMonths[i]) {
+      throw new Error('Index out of bounds for termMonths array: ' + i)
+    }
+    return (capCost + residualValues[i]!) * moneyFactors[i]!
+  })
+  const monthlyPayments = deprecation.map((dep, i) => {
+    if (!termMonths[i]) {
+      throw new Error('Index out of bounds for termMonths array: ' + i)
+    }
+    return dep + financeCharges[i]!
+  })
+
+  const leaseOptions = termMonths.map((n, i) => {
+    return {
+      term: n,
+      apr: parseFloat(adjustedAprs[i]!.toFixed(4)),
+      monthlyPayment: parseFloat(monthlyPayments[i]!.toFixed(2)),
+    }
+  })
+
+  console.log(leaseOptions)
+  // Recommend the best option based on inputs and llm response
+  const prompt = `Given a FICO score of ${ficoScore}, a monthly income of $${monthlyIncome}, and a car price of $${carPrice}, which lease term would you recommend from the following options: ${leaseOptions
+    .map(
+      (option) =>
+        `${option.term} months - $${option.monthlyPayment} - ${
+          option.apr * 100
+        }%`
+    )
+    .join(', ')}? Provide only the term in months as a number.`
+  console.log('Lease recommendation prompt:', prompt)
+  const aiResponse = await openai.chat.completions.create({
+    model: 'gpt-4.1-mini',
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+  })
+  const recommendText = aiResponse.choices[0]?.message?.content || ''
+  const recommendMatch = recommendText.match(/(\d{2})/)
+  let recommend = null
+  if (recommendMatch && recommendMatch[1]) {
+    recommend = parseInt(recommendMatch[1], 10)
+  }
+  console.log(`AI recommended for lease ${recommendText}`)
+
+  return res.json({
+    success: true,
+    message: 'Lease details calculated successfully',
+    data: {
+      leaseOptions: leaseOptions.map((option) => ({
+        term: option.term,
+        apr: option.apr,
+        monthlyPayment: option.monthlyPayment,
+        recommended: option.term === recommend,
+      })),
+    },
+  })
 })
 
 export default router
