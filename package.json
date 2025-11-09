@@ -9,6 +9,7 @@
     "build": "tsc",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
+    "seed": "node --loader ts-node/esm src/db/seed.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -34,7 +35,8 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "mongoose": "^8.19.3"
   },
   "ts-node": {
     "esm": true

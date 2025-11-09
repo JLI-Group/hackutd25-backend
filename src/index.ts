@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import config from './config/index.js';
 import apiRoutes from './routes/api.js';
+import { connectDB } from './config/database.js';
 
 const app = express();
 
@@ -26,10 +27,12 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api', apiRoutes);
 
-// Start server
-app.listen(config.server.port, () => {
-  console.log(`Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`);
-  console.log(`Environment variables loaded: ${Object.keys(process.env).filter(key => !key.startsWith('npm_')).length} variables`);
+// Connect to MongoDB and start server
+connectDB().then(() => {
+  app.listen(config.server.port, () => {
+    console.log(`Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`);
+    console.log(`Environment variables loaded: ${Object.keys(process.env).filter(key => !key.startsWith('npm_')).length} variables`);
+  });
 });
 
 export default app;
