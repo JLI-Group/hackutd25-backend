@@ -295,7 +295,7 @@ router.post('/cars/match', async (req, res) => {
         $sort: { searchScore: -1 }
       },
       {
-        $limit: 5
+        $limit: 20
       }
     ]);
 
