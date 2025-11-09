@@ -10,6 +10,8 @@ const CarSchema = new mongoose.Schema({
   driveType: { type: [String], enum: ["AWD", "RWD", "FWD"] },
   trimLevels: { type: [String], enum: ["Base", "Sport", "EX", "Luxury"] },
   priority: { type: [String], enum: ["Fuel efficiency", "Power"] },
+  price: { type: Number,},
+  description: { type: String, },
 });
 
 export default mongoose.model("Car", CarSchema);

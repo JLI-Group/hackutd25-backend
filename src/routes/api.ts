@@ -218,10 +218,9 @@ router.post('/cars/match', async (req, res) => {
     // Build Atlas Search query
     const searchQuery = {
       $search: {
-        index: 'default', // Make sure this matches your Atlas Search index name
+        index: 'default',
         compound: {
           must: [
-            // Must meet minimum seats requirement if specified
             ...(seats > 0 ? [{
               range: {
                 path: "seats",
@@ -230,7 +229,6 @@ router.post('/cars/match', async (req, res) => {
             }] : [])
           ],
           should: [
-            // Match bodyStyle with exact matching
             ...(bodyStyle ? [{
               text: {
                 query: bodyStyle,
@@ -238,7 +236,6 @@ router.post('/cars/match', async (req, res) => {
                 score: { boost: { value: 2.0 } }
               }
             }] : []),
-            // Match usage with exact matching
             ...(usage.length > 0 ? [{
               text: {
                 query: usage,
@@ -246,7 +243,6 @@ router.post('/cars/match', async (req, res) => {
                 score: { boost: { value: 1.5 } }
               }
             }] : []),
-            // Match drivingExperience with exact matching
             ...(drivingExperience.length > 0 ? [{
               text: {
                 query: drivingExperience,
@@ -254,7 +250,6 @@ router.post('/cars/match', async (req, res) => {
                 score: { boost: { value: 1.5 } }
               }
             }] : []),
-            // Match engineType with exact matching
             ...(engineType.length > 0 ? [{
               text: {
                 query: engineType,
@@ -262,7 +257,6 @@ router.post('/cars/match', async (req, res) => {
                 score: { boost: { value: 2.0 } }
               }
             }] : []),
-            // Match driveType with exact matching
             ...(driveType.length > 0 ? [{
               text: {
                 query: driveType,
@@ -270,7 +264,6 @@ router.post('/cars/match', async (req, res) => {
                 score: { boost: { value: 1.0 } }
               }
             }] : []),
-            // Match priority with exact matching
             ...(priority.length > 0 ? [{
               text: {
                 query: priority,
@@ -292,11 +285,24 @@ router.post('/cars/match', async (req, res) => {
         }
       },
       {
-        $sort: { searchScore: -1 }
+        $project: {
+          _id: 1,
+          name: 1,
+          bodyStyle: 1,
+          usage: 1,
+          drivingExperience: 1,
+          engineType: 1,
+          seats: 1,
+          driveType: 1,
+          priority: 1,
+          price: 1,  
+          description: 1,  
+          searchScore: 1    
+        }
       },
       {
-        $limit: 20
-      }
+        $sort: { searchScore: -1 } // sort by best match
+      },
     ]);
 
     return res.json({
@@ -312,5 +318,6 @@ router.post('/cars/match', async (req, res) => {
     });
   }
 });
+
 
 export default router
