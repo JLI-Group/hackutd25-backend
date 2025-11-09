@@ -112,12 +112,6 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
 
         console.log('File uploaded:', fileInfo)
 
-        // Here you can add your image processing logic
-        // For example:
-        // - Resize the image
-        // - Extract metadata
-        // - Save info to database
-        // - Process with AI/ML models
 
         const fileContent = fs.createReadStream(fileInfo.path)
         const fileId = await openai.files
@@ -200,6 +194,7 @@ router.get('/config', (req, res) => {
     })
 })
 
+
 // Car matching endpoint using MongoDB Atlas Search
 router.post('/cars/match', async (req, res) => {
   try {
@@ -240,28 +235,28 @@ router.post('/cars/match', async (req, res) => {
               text: {
                 query: usage,
                 path: "usage",
-                score: { boost: { value: 1.5 } }
+                score: { boost: { value: 0.8 } }
               }
             }] : []),
             ...(drivingExperience.length > 0 ? [{
               text: {
                 query: drivingExperience,
                 path: "drivingExperience",
-                score: { boost: { value: 1.5 } }
+                score: { boost: { value: 0.8 } }
               }
             }] : []),
             ...(engineType.length > 0 ? [{
               text: {
                 query: engineType,
                 path: "engineType",
-                score: { boost: { value: 2.0 } }
+                score: { boost: { value: 1.5 } }
               }
             }] : []),
             ...(driveType.length > 0 ? [{
               text: {
                 query: driveType,
                 path: "driveType",
-                score: { boost: { value: 1.0 } }
+                score: { boost: { value: 0.8 } }
               }
             }] : []),
             ...(priority.length > 0 ? [{

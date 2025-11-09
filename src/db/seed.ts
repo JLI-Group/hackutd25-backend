@@ -13,7 +13,7 @@ const carData = [
     bodyStyle: "Sedan",
     usage: ["Daily commuting"],
     drivingExperience: ["Smooth & comfortable"],
-    engineType: ["Gasoline", "Hybrid"],
+    engineType: ["Gasoline"],
     seats: 5,
     driveType: ["FWD"],
     trimLevels: ["Base", "Sport", "EX", "Luxury"],
@@ -65,7 +65,7 @@ const carData = [
     bodyStyle: "Sedan",
     usage: ["Daily commuting"],
     drivingExperience: ["Smooth & comfortable"],
-    engineType: ["Hybrid", "Electric"],
+    engineType: ["Hybrid"],
     seats: 5,
     driveType: ["FWD"],
     trimLevels: ["EX", "Luxury"],
@@ -78,13 +78,26 @@ const carData = [
     bodyStyle: "Sedan",
     usage: ["Daily commuting", "Leisure"],
     drivingExperience: ["Smooth & comfortable", "Sporty & responsive"],
-    engineType: ["Gasoline", "Hybrid"],
+    engineType: ["Gasoline"],
     seats: 5,
     driveType: ["FWD", "AWD"],
     trimLevels: ["Base", "Sport", "EX", "Luxury"],
     priority: ["Fuel efficiency"],
     price: 28000,
-    description: "The 2025 Camry is the perfect car for you! Sleek, stylish, and efficient, it offers a refined blend of performance and comfort. Whether you choose the hybrid or gas version, you’ll enjoy responsive handling, luxurious interiors, and advanced driver assistance features that make every drive rewarding."
+    description: "The 2025 Camry is the perfect car for you! Sleek, stylish, and efficient, it offers a refined blend of performance and comfort. Sporting a gas engine, you’ll enjoy responsive handling, luxurious interiors, and advanced driver assistance features that make every drive rewarding."
+  },
+    {
+    name: "Camry",
+    bodyStyle: "Sedan",
+    usage: ["Daily commuting", "Leisure"],
+    drivingExperience: ["Smooth & comfortable", "Sporty & responsive"],
+    engineType: ["Hybrid"],
+    seats: 5,
+    driveType: ["FWD", "AWD"],
+    trimLevels: ["Base", "Sport", "EX", "Luxury"],
+    priority: ["Fuel efficiency"],
+    price: 28000,
+    description: "The 2025 Camry is the perfect car for you! Sleek, stylish, and efficient, it offers a refined blend of performance and comfort. Sporting a hybrid engine, you’ll enjoy responsive handling, luxurious interiors, and advanced driver assistance features that make every drive rewarding."
   },
   {
     name: "GR86",
@@ -152,6 +165,19 @@ const carData = [
     description: "The 2025 Toyota Crown is the perfect car for you! It’s a sophisticated hybrid sedan that blends luxury, innovation, and performance. With standard AWD, premium interiors, and bold design, it redefines what a modern executive car can be — powerful, efficient, and strikingly elegant."
   },
   {
+    name: "Toyota Crown Signia",
+    bodyStyle: "SUV",
+    usage: ["Daily commuting", "Leisure"],
+    drivingExperience: ["Smooth & comfortable"],
+    engineType: ["Hybrid"],
+    seats: 5,
+    driveType: ["AWD"],
+    trimLevels: ["EX", "Luxury"],
+    priority: ["Fuel efficiency"],
+    price: 44000,
+    description: "The 2025 Toyota Crown is the perfect car for you! It’s a sophisticated hybrid sedan that blends luxury, innovation, and performance. With standard AWD, premium interiors, and bold design, it redefines what a modern executive car can be — powerful, efficient, and strikingly elegant."
+  },
+  {
     name: "Corolla Cross",
     bodyStyle: "SUV",
     usage: ["Daily commuting"],
@@ -208,7 +234,7 @@ const carData = [
     bodyStyle: "SUV",
     usage: ["Leisure"],
     drivingExperience: ["Smooth & comfortable"],
-    engineType: ["Hybrid", "Electric"],
+    engineType: ["Hybrid"],
     seats: 5,
     driveType: ["AWD"],
     trimLevels: ["EX", "Luxury"],
@@ -217,7 +243,7 @@ const carData = [
     description: "The 2025 RAV4 Plug-in Hybrid is the perfect car for you! It combines electric driving for short trips with hybrid power for long adventures. Offering strong performance, standard AWD, and premium comfort, it’s an eco-friendly SUV designed to go wherever life takes you."
   },
   {
-    name: "bZ4X",
+    name: "bZ",
     bodyStyle: "SUV",
     usage: ["Daily commuting", "Leisure"],
     drivingExperience: ["Smooth & comfortable"],
@@ -227,7 +253,7 @@ const carData = [
     trimLevels: ["EX", "Luxury"],
     priority: ["Fuel efficiency"],
     price: 42000,
-    description: "The 2025 bZ4X is the perfect car for you! As Toyota’s cutting-edge all-electric SUV, it offers zero-emission driving with advanced technology and bold design. With available AWD and intuitive infotainment, it’s the ideal blend of innovation, comfort, and sustainability."
+    description: "The 2025 bZ    is the perfect car for you! As Toyota’s cutting-edge all-electric SUV, it offers zero-emission driving with advanced technology and bold design. With available AWD and intuitive infotainment, it’s the ideal blend of innovation, comfort, and sustainability."
   },
   {
     name: "Highlander",
@@ -239,7 +265,7 @@ const carData = [
     driveType: ["AWD", "FWD"],
     trimLevels: ["Base", "EX", "Luxury"],
     priority: ["Fuel efficiency"],
-    price: 38000,
+    price: 45000,
     description: "The 2025 Highlander is the perfect car for you! Spacious, powerful, and family-ready, it offers three rows of comfort and advanced safety features. Whether it’s a road trip or daily errands, the Highlander’s strong performance and refined interior make every journey memorable."
   },
   {
@@ -252,8 +278,34 @@ const carData = [
     driveType: ["AWD"],
     trimLevels: ["EX", "Luxury"],
     priority: ["Fuel efficiency"],
-    price: 42000,
+    price: 47000,
     description: "The 2025 Highlander Hybrid is the perfect car for you! Combining family-sized comfort with hybrid efficiency, it offers room for seven and the confidence of AWD. Quiet, capable, and fuel-saving, it’s designed to make family adventures more enjoyable and economical."
+  },
+  {
+    name: "Grand Highlander",
+    bodyStyle: "SUV",
+    usage: ["Leisure"],
+    drivingExperience: ["Smooth & comfortable"],
+    engineType: ["Gasoline"],
+    seats: 7,
+    driveType: ["AWD", "FWD"],
+    trimLevels: ["Base", "EX", "Luxury"],
+    priority: ["Fuel efficiency"],
+    price: 41000,
+    description: "The 2025 Grand Highlander is the perfect car for you! Spacious, powerful, and family-ready, it offers three rows of comfort and advanced safety features. Whether it’s a road trip or daily errands, the Highlander’s strong performance and refined interior make every journey memorable."
+  },
+  {
+    name: "Grand Highlander Hybrid",
+    bodyStyle: "SUV",
+    usage: ["Leisure"],
+    drivingExperience: ["Smooth & comfortable"],
+    engineType: ["Hybrid"],
+    seats: 7,
+    driveType: ["AWD"],
+    trimLevels: ["EX", "Luxury"],
+    priority: ["Fuel efficiency"],
+    price: 44000,
+    description: "The 2025 Grand Highlander Hybrid is the perfect car for you! Combining family-sized comfort with hybrid efficiency, it offers room for seven and the confidence of AWD. Quiet, capable, and fuel-saving, it’s designed to make family adventures more enjoyable and economical."
   },
   {
     name: "Land Cruiser",
@@ -267,6 +319,45 @@ const carData = [
     priority: ["Power"],
     price: 55000,
     description: "The 2025 Land Cruiser is the perfect car for you! Reimagined with hybrid power and legendary toughness, it conquers any terrain with confidence. Combining off-road mastery with modern luxury, it’s built for those who demand adventure, durability, and sophistication in one package."
+  },
+  {
+    name: "Sequoia",
+    bodyStyle: "SUV",
+    usage: ["Daily commuting", "Leisure"],
+    drivingExperience: ["Smooth & comfortable"],
+    engineType: ["Hybrid"],
+    seats: 5,
+    driveType: ["AWD"],
+    trimLevels: ["EX", "Luxury"],
+    priority: ["Fuel efficiency"],
+    price: 64000,
+    description: "The 2025 Sequoia is the perfect car for you! It’s a sophisticated hybrid sedan that blends luxury, innovation, and performance. With standard AWD, premium interiors, and bold design, it redefines what a modern executive car can be — powerful, efficient, and strikingly elegant."
+  },
+  {
+    name: "4Runner",
+    bodyStyle: "SUV",
+    usage: ["Leisure"],
+    drivingExperience: ["Smooth & comfortable"],
+    engineType: ["Gasoline"],
+    seats: 7,
+    driveType: ["AWD", "FWD"],
+    trimLevels: ["Base", "EX", "Luxury"],
+    priority: ["Fuel efficiency"],
+    price: 45000,
+    description: "The 2025 4Runner is the perfect car for you! Spacious, powerful, and family-ready, it offers three rows of comfort and advanced safety features. Whether it’s a road trip or daily errands, the Highlander’s strong performance and refined interior make every journey memorable."
+  },
+  {
+    name: "4Runner i-FORCE MAX",
+    bodyStyle: "SUV",
+    usage: ["Leisure"],
+    drivingExperience: ["Smooth & comfortable"],
+    engineType: ["Hybrid"],
+    seats: 7,
+    driveType: ["AWD"],
+    trimLevels: ["EX", "Luxury"],
+    priority: ["Fuel efficiency"],
+    price: 52000,
+    description: "The 2025 4Runner i-FORCE MAX is the perfect car for you! Combining family-sized comfort with hybrid efficiency, it offers room for seven and the confidence of AWD. Quiet, capable, and fuel-saving, it’s designed to make family adventures more enjoyable and economical."
   },
   {
     name: "Tacoma",
@@ -317,7 +408,7 @@ const carData = [
     driveType: ["AWD"],
     trimLevels: ["EX", "Luxury"],
     priority: ["Power"],
-    price: 52000,
+    price: 58000,
     description: "The 2025 Tundra i-FORCE MAX is the perfect truck for you! With a hybrid powertrain that delivers incredible torque, it’s engineered for towing, hauling, and conquering off-road challenges. Blending brute strength with advanced tech, it’s the future of full-size truck performance."
   },
   {
@@ -349,7 +440,7 @@ const seedDatabase = async () => {
 
     // Insert new data
     await Car.insertMany(carData);
-    console.log('✅ Toyota data seeded successfully!');
+    console.log('Toyota data seeded successfully!');
 
   } catch (error) {
     console.error('Error seeding database:', error);
