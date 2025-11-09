@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import Car from '../models/Car.js';
+import Car from '../models/car.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
