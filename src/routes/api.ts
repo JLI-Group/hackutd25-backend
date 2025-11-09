@@ -6,6 +6,7 @@ import fs from 'fs'
 import config from '../config/index.js'
 import { OpenAI } from 'openai'
 import Car from '../models/car.js';
+import apr from '../models/apr.js'
 
 interface ICar {
   name: string;
@@ -113,31 +114,25 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
         console.log('File uploaded:', fileInfo)
 
 
-        const fileContent = fs.createReadStream(fileInfo.path)
-        const fileId = await openai.files
-            .create({
-                file: fileContent,
-                purpose: 'vision',
-            })
-            .then((file) => file.id)
-
-        const response = await openai.responses.create({
-            model: 'gpt-4.1-mini',
-            input: [
-            {
-                role: 'user',
-                content: [
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4-vision-preview',
+            messages: [
                 {
-                    type: 'input_text',
-                    text: "Describe the car in the image based on the keywords of this schema: [\"Sedan\", \"SUV\", \"Truck\", \"Mini-van\"], [\"Daily commuting\", \"Off-road\", \"Work\", \"Leisure\"], [\"Smooth & comfortable\", \"Sporty & responsive\", \"Off-road capable\"], [\"Gasoline\", \"Hybrid\", \"Electric\"], [\"AWD\", \"RWD\", \"FWD\"], [\"Base\", \"Sport\", \"EX\", \"Luxury\"]. Pick a key word for each array that best describes the car and separate it by commas.",
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'text',
+                            text: "Describe the car in the image based on the keywords of this schema: [\"Sedan\", \"SUV\", \"Truck\", \"Mini-van\"], [\"Daily commuting\", \"Off-road\", \"Work\", \"Leisure\"], [\"Smooth & comfortable\", \"Sporty & responsive\", \"Off-road capable\"], [\"Gasoline\", \"Hybrid\", \"Electric\"], [\"AWD\", \"RWD\", \"FWD\"], [\"Base\", \"Sport\", \"EX\", \"Luxury\"]. Pick a key word for each array that best describes the car and separate it by commas.",
+                        },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${fileInfo.mimetype};base64,${fs.readFileSync(fileInfo.path, 'base64')}`,
+                                detail: 'high'
+                            }
+                        },
+                    ],
                 },
-                {
-                    type: 'input_image',
-                    file_id: fileId,
-                    detail: 'high',
-                },
-                ],
-            },
             ],
         })
 
@@ -157,7 +152,7 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
                 size: fileInfo.size,
                 mimetype: fileInfo.mimetype,
             },
-            modelResponse: response.output_text,
+            modelResponse: response.choices[0]?.message?.content || 'No response',
         })
     } catch (error) {
         console.error('Error uploading file:', error)
@@ -175,7 +170,68 @@ router.post('/car-upload', upload.single('image'), async (req, res) => {
             error: error instanceof Error ? error.message : 'Unknown error',
         })
     }
-}) // Configuration endpoint (development only)
+}) 
+
+/**
+ * Endpoint to get loan details
+ * Given: FICO, Monthly Income, Car Price
+ * Returns: Suggested loan terms including APR and monthly payment
+ */
+router.post('/loan-details', async (req, res) => {
+    const {ficoScore, monthlyIncome, carPrice} = req.body
+
+    // Get APR based on FICO score from database 
+    let customerTier: string;
+    if (ficoScore >= 781) {
+        customerTier = "SuperPrime"
+    } else if (ficoScore >= 661 && ficoScore <= 780) {
+        customerTier = "Prime"
+    } else if (ficoScore >= 601 && ficoScore <= 660) {
+        customerTier = "Non-Prime"
+    } else if (ficoScore >= 501 && ficoScore <= 600) {
+        customerTier = "SubPrime"
+    } else {
+        customerTier = "Deep-SubPrime"
+    }
+    
+    const test = await apr.find();
+    const baseApr = await apr.findOne({tier: customerTier}).then(doc => doc ? doc.rate : null);
+
+    if (!baseApr){
+        return res.status(500).json({
+            success: false,
+            message: 'Error retrieving APR from database',
+        })
+    }
+    
+    const carPriceCap = carPrice * 0.1; // 10% is arbitrary
+    const monthlyIncomeCap = monthlyIncome * 12 * 0.05; // 5% of annual income (arbitrary)
+    const downPayment = Math.min(carPriceCap, monthlyIncomeCap);
+    const ltv = (carPrice - downPayment) / carPrice;
+
+    // Adjust APR based on LTV
+    let finalApr = baseApr + 0.05 * (ltv - 0.8); // Usually highest/standard is 20% down payment, 0.05 is arbitrary (fees, risk, etc)
+
+    // Calculate monthly payment using standard formula for 24, 36, 48, 60, 72 month terms
+    const loanTerms = [24, 36, 48, 60, 72];
+    const paymentFees = [1.025, 1.05, 1.075, 1.125, 1.15];
+    const aprPremium = [0, 0.025, 0.03, 0.05, 0.075];
+
+    const loanOptions = loanTerms.map((term, index) => {
+        const monthlyPayment = (carPrice - downPayment) * ((finalApr / 12) + (aprPremium[index] || 0)) / (1 - Math.pow(1 + finalApr / 12, -term)) * (paymentFees[index] || 1);
+        return { term, monthlyPayment };
+    });
+
+    return res.json({
+        success: true,
+        message: 'Loan details calculated successfully',
+        data: {
+            loanOptions: loanOptions,
+        }
+    })
+})
+
+// Configuration endpoint (development only)
 router.get('/config', (req, res) => {
     if (config.server.nodeEnv !== 'development') {
         return res
